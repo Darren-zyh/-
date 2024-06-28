@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>User Authentication</title>
+        <link href="https://api.mapbox.com/mapbox-gl-js/v2.7.0/mapbox-gl.css" rel="stylesheet" />
+        <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
+        <link href='https://unpkg.com/fullcalendar@5/main.min.css' rel='stylesheet' />
+<script src='https://unpkg.com/fullcalendar@5/main.min.js'></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 20px;
+                padding: 0;
+                background-color: #f4f4f4;
+            }
+    
+            #loginRegistrationUI, #appSection, #individualRunSection, #createRunForm, #commentForm {
+                background-color: #fff;
+                padding: 20px;
+                border-radius: 5px;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+                margin-bottom: 20px;
+            }
+    
+            input[type=text], input[type=password], input[type=date], input[type=time], input[type=number], textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            box-sizing: border-box; 
+        }
+
+        .suggestion-option {
+background: white;
+border: 1px solid #ddd;
+padding: 8px;
+cursor: pointer;
+}
+
+.suggestion-option:hover {
+background-color: #f0f0f0;
+}
+
+label[for="run-level"] {
+    display: block;
+    margin: 10px 0;
+    font-weight: bold;
+}
+
+select {
+    width: 100%;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+    margin: 10px 0;
+    box-sizing: border-box; /* Keeps padding inside the box */
+    cursor: pointer;
+    background-color: #f8f8f8;
+}
+
+select:hover {
+    background-color: #e8e8e8;
+}
+
+/* Tooltip styling */
+.tooltip {
+    position: relative;
+    display: inline-block;
+    border-bottom: 1px dotted black; 
+}
+
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: 120px;
+    background-color: black;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 5px 0;
+    position: absolute;
+    z-index: 1;
+    bottom: 100%;
+    left: 50%;
+    margin-left: -60px; 
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}
+            button {
+                background-color: #007bff;
+                color: white;
+                padding: 10px 20px;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+            }
+    
+            button:hover {
+                background-color: #0056b3;
+            }
+
+            #runsListContainer {
+    max-width: 600px; 
+    margin: auto;
+    padding: 20px;
+    font-family: Arial, sans-serif; 
+}
+
+/* Search input styles */
+#searchRuns {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 20px;
+    box-sizing: border-box; 
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+/* Individual run entry styles */
+.run {
+    padding: 15px;
+    margin-bottom: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+}
+
+.run div {
+    margin-bottom: 5px; 
+}
+
+.run div:last-child {
+    margin-bottom: 0; 
+}
+
+.run strong {
+    color: #333; 
+}
+
+
+.run:hover {
+    background-color: #efefef;
+}
+    
+            #mapContainer {
+                height: 400px;
+                margin-top: 20px;
+            }
+    
+            #commentsDisplayArea {
+                background-color: #e9ecef;
+                padding: 10px;
+                margin-top: 20px;
+                border-radius: 5px;
+            }
+            #chartContainer {
+  width: 400px; 
+  height: 300px; 
+}
+        </style>
+    </head>
+<body>
+    <!-- User Authentication Section -->
+    <div id="loginRegistrationUI">
+        <div>
+            <label for="authUsername">Username:</label>
+            <input type="text" id="authUsername" placeholder="Enter your username">
+        </div>
+        <div>
+            <label for="authPassword">Password:</label>
+            <input type="password" id="authPassword" placeholder="Enter your password">
+        </div>
+        <button id="loginButton">Login</button>
+        <button id="registerButton">Register</button>
+    </div>
+
+    <!-- Application Section -->
+    <div id="appSection" style="display: none;">
+        <!-- Create a Run Form -->
+        <div id="createRunForm">
+            <h2>Create a Run</h2>
+            <input type="date" id="runDate" required>
+            <input type="time" id="runTime" required>
+            <input type="text" id="runLocation" placeholder="Location" required>
+            <input type="number" id="pace" placeholder="Approximate Pace (miles per minute)" required>
+            <!-- Starting Place Latitude and Longitude -->
+            <!-- <input type="number" id="startingLat" placeholder="Starting Latitude" step="any" required>
+            <input type="number" id="startingLon" placeholder="Starting Longitude" step="any" required> -->
+            <input type="text" id="startingPlace" placeholder="Starting Place">
+            <ul id="startingPlaceSuggestions" style="display:none;"></ul>
+
+            <input type="text" id="meetingPlace" placeholder="Meeting Place (Optional)">
+            <ul id="meetingPlaceSuggestions" style="display:none;"></ul>
+
+            <input type="text" id="endingPlace" placeholder="Ending Place">
+            <ul id="endingPlaceSuggestions" style="display:none;"></ul>
+            <!-- Ending Place Latitude and Longitude -->
+            <!-- <input type="number" id="endingLat" placeholder="Ending Latitude" step="any" required>
+            <input type="number" id="endingLon" placeholder="Ending Longitude" step="any" required> -->
+            <!-- Level Dropdown -->
+            <label for="run-level" title="1 is easy, 5 is advanced">Level
+                <select id="run-level" name="run-level" required>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                </select>
+            </label>
+            <button id="createRunButton">Create Run</button>
+            <button id="displayCalendarButton">Display Calendar</button>
+            <div id="map" style="width: 400px; height: 300px;"></div>
+            <div id="calendar"></div>
+        </div>
+        <button id="userpreferences">User Question and Answer Form</button>
+        <div id="userPreferencesSection" style="display: none;">
+            <h2>About You</h2>
+            <form id="userPreferencesForm">
+                <label for="maxDistance">Maximum Distance (km):</label>
+                <input type="number" id="maxDistance" name="maxDistance">
+
+                <label for="preferredLevel">Preferred Level(1-5):</label>
+                <input type="number" id="preferredLevel" name="preferredLevel">
+
+                <label for="averageTravel">The greatest distance you are willing to travel to run:</label>
+                <input type="number" id="averageTravel" name="averageTravel>
+
+
+                <label for="userLat">User Latitude:</label>
+                <input type="number" id="userLat" placeholder="User Latitude" step="any" required>
+                <label for="userLon">User Longitude:</label>
+               <input type="number" id="userLon" placeholder="User Longitude" step="any" required>
+
+
+                <button type="submit">submit</button>
+            </form>
+        </div>
+        <div id="runsListContainer">
+            <input type="text" id="searchRuns" placeholder="Enter a Run Id">
+            <div id="runsList"></div>
+        </div>
+
+        <button id="recomendRuns">Recomend Runs</button>
+        <button id="activeChallengesButton">Active Challenges</button>
+
+
+        <div>
+            <canvas id="participantsChart"></canvas>
+        </div>
+    </div>
+
+
+    <!-- Individual Run Section -->
+    <div id="individualRunSection" style="display: none;">
+        <button id="joinRunButton">Join Run</button>
+        
+        <!-- Leave a Comment Form -->
+        <div id="commentForm">
+            <h2>Leave a Comment</h2>
+            <textarea id="commentText" placeholder="Your comment here..." required></textarea>
+            <button id="submitCommentButton">Submit Comment</button>
+        </div>
+
+        <button id ="fetchCommentButton">Fetch Comments</button>
+
+        <!-- Display Comments -->
+        <div id="commentsDisplayArea"></div>
+
+        <div id="mapContainer"></div>
+        <button id="displayMapButton">Display Map</button>
+
+
+
+        <!-- Back Button -->
+        <button id="backButton">Back</button>
+    </div>
+    <div id="challengesSection" style="display: none;">
+        <h2>Active Challenges</h2>
+        <div id="createChallengeForm">
+            <h2>Create a New Challenge</h2>
+            <input type="text" id="challengeTitle" placeholder="Title" required>
+            <textarea id="challengeDescription" placeholder="Description" required></textarea>
+            <input type="date" id="challengeStartDate" required>
+            <input type="date" id="challengeEndDate" required>
+            <div>
+                <input type="radio" id="distanceChallenge" name="challengeType" value="distance" checked>
+                <label for="distanceChallenge">Distance Challenge</label>
+                <input type="radio" id="runsChallenge" name="challengeType" value="runs">
+                <label for="runsChallenge">Runs Challenge</label>
+            </div>
+            <input type="number" id="challengeGoalValue" placeholder="Goal Value" required>
+            <button id="createChallengeButton" type="button">Create Challenge</button>
+
+
+        </div>
+        <div id="challengesList">
+            
+        </div>
+        <div id="chartContainer" style="width:400px; height:300px;">
+            <canvas id="progressChart"></canvas>
+        </div>
+        <button id="backToAppButton">Back to App</button>
+    </div>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.7.0/mapbox-gl.js"></script>
+    <script src="script3.js"></script>
+</body>
+</html>
